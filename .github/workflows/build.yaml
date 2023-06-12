@@ -106,6 +106,7 @@ jobs:
             make
             libtool
             autoconf
+            pkg-config
             automake-wrapper
             cython
       - name: prepare environment
