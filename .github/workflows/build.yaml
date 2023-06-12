@@ -4,47 +4,44 @@ on:
   push:
 
 jobs:
-  linux:
-    name: ${{ matrix.platform.os_name }} with rust ${{ matrix.toolchain }}
-    runs-on: ${{ matrix.platform.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        platform:
-          - os_name: Linux-x86_64
-            os: ubuntu-20.04
-            target: x86_64-unknown-linux-gnu
-            bin: netmuxd
-            name: netmuxd-Linux-x86_64-gnu.tar.gz
-    steps:
-      - uses: actions/checkout@v3
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libssl-dev libplist++-dev libavahi-client-dev libusb-1.0-0-dev
-      - run: sudo apt-get install -y musl-tools
-        if: contains(matrix.platform.target, 'musl')
-      - run: sudo apt-get install -y build-essential
-        if: contains(matrix.platform.target, 'gnu')
-      - name: Setup Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-        with:
-          key: ${{ matrix.platform.target }}
-      - name: Build binary
-        uses: houseabsolute/actions-rust-cross@v0
-        with:
-          command: "build"
-          target: ${{ matrix.platform.target }}
-          args: "--release --bin ${{ matrix.platform.bin }}"
-      - name: Set exe extension for Windows
-        run: echo "EXE=.exe" >> $env:GITHUB_ENV
-        if: startsWith(matrix.platform.os, 'windows')
-      - name: Publish release artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: netmuxd-${{ matrix.platform.os_name }}
-          path: target/${{ matrix.platform.target }}/release/${{ matrix.platform.bin }}${{ env.EXE }}
+  # linux:
+  #   name: ${{ matrix.platform.os_name }} with rust ${{ matrix.toolchain }}
+  #   runs-on: ${{ matrix.platform.os }}
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       platform:
+  #         - os_name: Linux-x86_64
+  #           os: ubuntu-20.04
+  #           target: x86_64-unknown-linux-gnu
+  #           bin: netmuxd
+  #           name: netmuxd-Linux-x86_64-gnu.tar.gz
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - name: Install dependencies
+  #       run: |
+  #         sudo apt-get update
+  #         sudo apt-get install -y libssl-dev libplist++-dev libavahi-client-dev libusb-1.0-0-dev
+  #     - run: sudo apt-get install -y musl-tools
+  #       if: contains(matrix.platform.target, 'musl')
+  #     - run: sudo apt-get install -y build-essential
+  #       if: contains(matrix.platform.target, 'gnu')
+  #     - name: Setup Rust toolchain
+  #       uses: dtolnay/rust-toolchain@stable
+  #     - uses: Swatinem/rust-cache@v2
+  #       with:
+  #         key: ${{ matrix.platform.target }}
+  #     - name: Build binary
+  #       uses: houseabsolute/actions-rust-cross@v0
+  #       with:
+  #         command: "build"
+  #         target: ${{ matrix.platform.target }}
+  #         args: "--release --bin netmuxd"
+  #     - name: Publish release artifacts
+  #       uses: actions/upload-artifact@v3
+  #       with:
+  #         name: netmuxd-${{ matrix.platform.os_name }}
+  #         path: target/${{ matrix.platform.target }}/release/netmuxd
 
   macos:
     name: ${{ matrix.platform.os_name }} with rust ${{ matrix.toolchain }}
@@ -66,14 +63,6 @@ jobs:
           #   skip_tests: true
     steps:
       - uses: actions/checkout@v3
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libssl-dev libplist++-dev libavahi-client-dev libusb-1.0-0-dev
-      - run: sudo apt-get install -y musl-tools
-        if: contains(matrix.platform.target, 'musl')
-      - run: sudo apt-get install -y build-essential
-        if: contains(matrix.platform.target, 'gnu')
       - name: Setup Rust toolchain
         uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
@@ -84,54 +73,39 @@ jobs:
         with:
           command: "build"
           target: ${{ matrix.platform.target }}
-          args: "--release --bin ${{ matrix.platform.bin }}"
-      - name: Set exe extension for Windows
-        run: echo "EXE=.exe" >> $env:GITHUB_ENV
-        if: startsWith(matrix.platform.os, 'windows')
+          args: "--release --bin netmuxd"
       - name: Publish release artifacts
         uses: actions/upload-artifact@v3
         with:
           name: netmuxd-${{ matrix.platform.os_name }}
-          path: target/${{ matrix.platform.target }}/release/${{ matrix.platform.bin }}${{ env.EXE }}
-
-  windows:
-    name: ${{ matrix.platform.os_name }} with rust ${{ matrix.toolchain }}
-    runs-on: ${{ matrix.platform.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        platform:
-          - os_name: Windows-x86_64
-            os: windows-latest
-            target: x86_64-pc-windows-msvc
-            bin: netmuxd.exe
-            name: netmuxd-Windows-x86_64.zip
-    steps:
-      - uses: actions/checkout@v3
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libssl-dev libplist++-dev libavahi-client-dev libusb-1.0-0-dev
-      - run: sudo apt-get install -y musl-tools
-        if: contains(matrix.platform.target, 'musl')
-      - run: sudo apt-get install -y build-essential
-        if: contains(matrix.platform.target, 'gnu')
-      - name: Setup Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-        with:
-          key: ${{ matrix.platform.target }}
-      - name: Build binary
-        uses: houseabsolute/actions-rust-cross@v0
-        with:
-          command: "build"
-          target: ${{ matrix.platform.target }}
-          args: "--release --bin ${{ matrix.platform.bin }}"
-      - name: Set exe extension for Windows
-        run: echo "EXE=.exe" >> $env:GITHUB_ENV
-        if: startsWith(matrix.platform.os, 'windows')
-      - name: Publish release artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: netmuxd-${{ matrix.platform.os_name }}
-          path: target/${{ matrix.platform.target }}/release/${{ matrix.platform.bin }}${{ env.EXE }}
+          path: target/${{ matrix.platform.target }}/release/netmuxd
+  # windows:
+  #   name: ${{ matrix.platform.os_name }} with rust ${{ matrix.toolchain }}
+  #   runs-on: ${{ matrix.platform.os }}
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       platform:
+  #         - os_name: Windows-x86_64
+  #           os: windows-latest
+  #           target: x86_64-pc-windows-msvc
+  #           bin: netmuxd.exe
+  #           name: netmuxd-Windows-x86_64.zip
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - name: Setup Rust toolchain
+  #       uses: dtolnay/rust-toolchain@stable
+  #     - uses: Swatinem/rust-cache@v2
+  #       with:
+  #         key: ${{ matrix.platform.target }}
+  #     - name: Build binary
+  #       uses: houseabsolute/actions-rust-cross@v0
+  #       with:
+  #         command: "build"
+  #         target: ${{ matrix.platform.target }}
+  #         args: "--release --bin netmuxd"
+  #     - name: Publish release artifacts
+  #       uses: actions/upload-artifact@v3
+  #       with:
+  #         name: netmuxd-${{ matrix.platform.os_name }}
+  #         path: target/${{ matrix.platform.target }}/release/netmuxd.exe
