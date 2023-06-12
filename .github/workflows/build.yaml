@@ -115,22 +115,25 @@ jobs:
           echo "dest=$dest" >> $GITHUB_ENV
           echo "target_triplet=`gcc -dumpmachine`" >> $GITHUB_ENV
           git config --global core.autocrlf false
-      - name: Use strawberry perl
+      - name: Use strawberry perl for openssl
         uses: shogo82148/actions-setup-perl@v1
         with:
           perl-version: "5.32"
           distribution: strawberry
-      - uses: actions/checkout@v3
-      - name: Setup Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-      - name: Build binary
-        uses: houseabsolute/actions-rust-cross@v0
-        with:
-          command: "build"
-          target: ${{ matrix.platform.target }}
-          args: "--release --bin netmuxd"
-      - name: Publish release artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: netmuxd-${{ matrix.platform.os_name }}
-          path: target/${{ matrix.platform.target }}/release/netmuxd.exe
+      - name: Show Perl Version
+        run: |
+          perl -v
+      # - uses: actions/checkout@v3
+      # - name: Setup Rust toolchain
+      #   uses: dtolnay/rust-toolchain@stable
+      # - name: Build binary
+      #   uses: houseabsolute/actions-rust-cross@v0
+      #   with:
+      #     command: "build"
+      #     target: ${{ matrix.platform.target }}
+      #     args: "--release --bin netmuxd"
+      # - name: Publish release artifacts
+      #   uses: actions/upload-artifact@v3
+      #   with:
+      #     name: netmuxd-${{ matrix.platform.os_name }}
+      #     path: target/${{ matrix.platform.target }}/release/netmuxd.exe
