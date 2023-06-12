@@ -66,9 +66,9 @@ jobs:
       - name: install dependencies
         run: |
           if test -x "`which port`"; then
-            sudo port install libtool autoconf automake
+            sudo port install libtool autoconf automake openssl
           else
-            brew install libtool autoconf automake
+            brew install libtool autoconf automake openssl
           fi
           pip3 install cython
         shell: bash
