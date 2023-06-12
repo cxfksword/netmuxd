@@ -29,8 +29,6 @@ jobs:
   #     - name: Setup Rust toolchain
   #       uses: dtolnay/rust-toolchain@stable
   #     - uses: Swatinem/rust-cache@v2
-  #       with:
-  #         key: ${{ matrix.platform.target }}
   #     - name: Build binary
   #       uses: houseabsolute/actions-rust-cross@v0
   #       with:
@@ -42,79 +40,92 @@ jobs:
   #       with:
   #         name: netmuxd-${{ matrix.platform.os_name }}
   #         path: target/${{ matrix.platform.target }}/release/netmuxd
-
-  macos:
-    name: ${{ matrix.platform.os_name }} with rust ${{ matrix.toolchain }}
-    runs-on: ${{ matrix.platform.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        platform:
-          - os_name: macOS-x86_64
-            os: macOS-latest
-            target: x86_64-apple-darwin
-            bin: netmuxd
-            name: netmuxd-Darwin-x86_64.tar.gz
-          # - os_name: macOS-aarch64
-          #   os: macOS-latest
-          #   target: aarch64-apple-darwin
-          #   bin: netmuxd
-          #   name: netmuxd-Darwin-aarch64.tar.gz
-          #   skip_tests: true
-    steps:
-      - uses: actions/checkout@v3
-      - name: install dependencies
-        run: |
-          if test -x "`which port`"; then
-            sudo port install libtool autoconf automake openssl
-          else
-            brew install libtool autoconf automake openssl
-          fi
-          pip3 install cython
-        shell: bash
-      - name: Setup Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-        with:
-          key: ${{ matrix.platform.target }}
-      - name: Build binary
-        uses: houseabsolute/actions-rust-cross@v0
-        with:
-          command: "build"
-          target: ${{ matrix.platform.target }}
-          args: "--release --features zeroconf --bin netmuxd"
-      - name: Publish release artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: netmuxd-${{ matrix.platform.os_name }}
-          path: target/${{ matrix.platform.target }}/release/netmuxd
-  # windows:
+  # macos:
   #   name: ${{ matrix.platform.os_name }} with rust ${{ matrix.toolchain }}
   #   runs-on: ${{ matrix.platform.os }}
   #   strategy:
   #     fail-fast: false
   #     matrix:
   #       platform:
-  #         - os_name: Windows-x86_64
-  #           os: windows-latest
-  #           target: x86_64-pc-windows-msvc
-  #           bin: netmuxd.exe
-  #           name: netmuxd-Windows-x86_64.zip
+  #         - os_name: macOS-x86_64
+  #           os: macOS-latest
+  #           target: x86_64-apple-darwin
+  #           bin: netmuxd
+  #           name: netmuxd-Darwin-x86_64.tar.gz
+  #         # - os_name: macOS-aarch64
+  #         #   os: macOS-latest
+  #         #   target: aarch64-apple-darwin
+  #         #   bin: netmuxd
+  #         #   name: netmuxd-Darwin-aarch64.tar.gz
+  #         #   skip_tests: true
   #   steps:
   #     - uses: actions/checkout@v3
+  #     - name: install dependencies
+  #       run: |
+  #         brew install libtool autoconf automake openssl
+  #         pip3 install cython
+  #       shell: bash
   #     - name: Setup Rust toolchain
   #       uses: dtolnay/rust-toolchain@stable
-  #     - uses: Swatinem/rust-cache@v2
-  #       with:
-  #         key: ${{ matrix.platform.target }}
   #     - name: Build binary
   #       uses: houseabsolute/actions-rust-cross@v0
   #       with:
   #         command: "build"
   #         target: ${{ matrix.platform.target }}
-  #         args: "--release --bin netmuxd"
+  #         args: "--release --features zeroconf --bin netmuxd"
   #     - name: Publish release artifacts
   #       uses: actions/upload-artifact@v3
   #       with:
   #         name: netmuxd-${{ matrix.platform.os_name }}
-  #         path: target/${{ matrix.platform.target }}/release/netmuxd.exe
+  #         path: target/${{ matrix.platform.target }}/release/netmuxd
+  windows:
+    name: ${{ matrix.platform.os_name }} with rust ${{ matrix.toolchain }}
+    runs-on: ${{ matrix.platform.os }}
+    defaults:
+      run:
+        shell: msys2 {0}
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - os_name: Windows-x86_64
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+            bin: netmuxd.exe
+            name: netmuxd-Windows-x86_64.zip
+    steps:
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          release: false
+          update: false
+          install: >-
+            base-devel
+            git
+            mingw-w64-x86_64-gcc
+            make
+            libtool
+            autoconf
+            automake-wrapper
+            openssl
+            cython
+      - name: prepare environment
+        run: |
+          dest=`echo MINGW64 |tr [:upper:] [:lower:]`
+          echo "dest=$dest" >> $GITHUB_ENV
+          echo "target_triplet=`gcc -dumpmachine`" >> $GITHUB_ENV
+          git config --global core.autocrlf false
+      - uses: actions/checkout@v3
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - name: Build binary
+        uses: houseabsolute/actions-rust-cross@v0
+        with:
+          command: "build"
+          target: ${{ matrix.platform.target }}
+          args: "--release --bin netmuxd"
+      - name: Publish release artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: netmuxd-${{ matrix.platform.os_name }}
+          path: target/${{ matrix.platform.target }}/release/netmuxd.exe
