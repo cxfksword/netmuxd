@@ -76,6 +76,7 @@ impl SharedDevices {
         network_address: IpAddr,
         service_name: String,
         connection_type: String,
+        pairable: bool,
         data: Arc<Mutex<Self>>,
     ) {
         if self.devices.contains_key(&udid) {
@@ -85,7 +86,14 @@ impl SharedDevices {
         self.last_index += 1;
         self.last_interface_index += 1;
 
-        let handle = heartbeat::heartbeat(udid.to_string(), network_address, data);
+        let mut handle = None;
+        if !pairable {
+            handle = Some(heartbeat::heartbeat(
+                udid.to_string(),
+                network_address,
+                data,
+            ));
+        }
 
         let dev = MuxerDevice {
             connection_type,
@@ -94,7 +102,7 @@ impl SharedDevices {
             interface_index: self.last_interface_index,
             network_address: Some(network_address),
             serial_number: udid.clone(),
-            heartbeat_handle: Some(handle),
+            heartbeat_handle: handle,
             connection_speed: None,
             location_id: None,
             product_id: None,
@@ -259,8 +267,11 @@ impl SharedDevices {
         }
     }
 
-    pub fn get_udid_from_mac(&mut self, mac: String) -> Result<String, ()> {
-        info!("Getting UDID for MAC: {:?}", mac);
+    pub fn get_udid_from_mac(&mut self, mac: String, pairable: bool) -> Result<String, ()> {
+        info!("Getting UDID for MAC: {:?} PARIABLE: {}", mac, pairable);
+        if pairable {
+            return Ok(format!("ffff{}fff", mac));
+        }
         if let Some(udid) = self.known_mac_addresses.get(&mac) {
             info!("Found UDID: {:?}", udid);
             return Ok(udid.to_string());

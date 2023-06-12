@@ -296,6 +296,7 @@ async fn handle_stream(
                                 ip_address.parse().unwrap(),
                                 service_name,
                                 connection_type,
+                                false,
                                 data.clone(),
                             );
 

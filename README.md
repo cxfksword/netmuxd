@@ -5,7 +5,7 @@ A replacement/addition to usbmuxd which is a reimplementation of Apple's usbmuxd
 # Building
 Make sure both [rusty_libimobiledevice](https://github.com/jkcoxson/rusty_libimobiledevice) and [plist_plus](https://github.com/jkcoxson/plist_plus) are buildable. Instructions are in their respective readme's.
 
-Run ``cargo build`` to generate binaries. It is located at ``target/debug/netmuxd``
+Run ``cargo build --bin netmuxd`` to generate binaries. It is located at ``target/debug/netmuxd``
 
 # Usage
 You need to pair your device beforehand using another muxer like [usbmuxd](https://github.com/libimobiledevice/usbmuxd).
