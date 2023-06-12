@@ -107,7 +107,7 @@ jobs:
             libtool
             autoconf
             automake-wrapper
-            openssl
+            mingw-w64-perl
             cython
       - name: prepare environment
         run: |
@@ -120,18 +120,21 @@ jobs:
         with:
           perl-version: "5.32"
           distribution: strawberry
+      - name: Make openssl-src Use Strawberry Perl
+        run: echo OPENSSL_SRC_PERL=C:/Strawberry/perl/bin/perl >> $GITHUB_ENV
       - name: Show Perl Version
         run: |
+          export PATH
           perl -v
-      # - uses: actions/checkout@v3
-      # - name: Setup Rust toolchain
-      #   uses: dtolnay/rust-toolchain@stable
-      # - name: Build binary
-      #   uses: houseabsolute/actions-rust-cross@v0
-      #   with:
-      #     command: "build"
-      #     target: ${{ matrix.platform.target }}
-      #     args: "--release --bin netmuxd"
+      - uses: actions/checkout@v3
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - name: Build binary
+        uses: houseabsolute/actions-rust-cross@v0
+        with:
+          command: "build"
+          target: ${{ matrix.platform.target }}
+          args: "--release --bin netmuxd"
       # - name: Publish release artifacts
       #   uses: actions/upload-artifact@v3
       #   with:
