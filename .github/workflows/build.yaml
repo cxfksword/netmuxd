@@ -90,7 +90,7 @@ jobs:
         platform:
           - os_name: Windows-x86_64
             os: windows-latest
-            target: x86_64-pc-windows-msvc
+            target: x86_64-pc-windows-gnu
             bin: netmuxd.exe
             name: netmuxd-Windows-x86_64.zip
     steps:
