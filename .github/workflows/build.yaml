@@ -107,7 +107,7 @@ jobs:
             libtool
             autoconf
             automake-wrapper
-            openssl
+            openssl-devel
             cython
       - name: prepare environment
         run: |
