@@ -107,7 +107,7 @@ jobs:
             libtool
             autoconf
             automake-wrapper
-            openssl-devel
+            openssl
             cython
       - name: prepare environment
         run: |
@@ -115,6 +115,11 @@ jobs:
           echo "dest=$dest" >> $GITHUB_ENV
           echo "target_triplet=`gcc -dumpmachine`" >> $GITHUB_ENV
           git config --global core.autocrlf false
+      - name: Use strawberry perl
+        uses: shogo82148/actions-setup-perl@v1
+        with:
+          perl-version: "5.32"
+          distribution: strawberry
       - uses: actions/checkout@v3
       - name: Setup Rust toolchain
         uses: dtolnay/rust-toolchain@stable
