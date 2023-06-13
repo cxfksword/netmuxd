@@ -107,27 +107,28 @@ jobs:
             libtool
             autoconf
             pkg-config
-            mingw-w64-x86_64-openssl
             automake-wrapper
             cython
+      - run: echo "VCPKG_ROOT=$env:VCPKG_INSTALLATION_ROOT" | Out-File -FilePath $env:GITHUB_ENV -Append
+      - run: vcpkg install openssl:x64-windows-static-md
       - name: prepare environment
         run: |
           dest=`echo MINGW64 |tr [:upper:] [:lower:]`
           echo "dest=$dest" >> $GITHUB_ENV
           echo "target_triplet=`gcc -dumpmachine`" >> $GITHUB_ENV
           git config --global core.autocrlf false
-      - name: Use strawberry perl for openssl
-        uses: shogo82148/actions-setup-perl@v1
-        with:
-          perl-version: "5.32"
-          distribution: strawberry
-      - name: Make openssl-src Use Strawberry Perl
-        run: echo OPENSSL_SRC_PERL=C:/Strawberry/perl/bin/perl >> $GITHUB_ENV
-      - name: Show Perl Version
-        run: |
-          export PATH
-          perl -v
-          C:/Strawberry/perl/bin/perl -v
+      # - name: Use strawberry perl for openssl
+      #   uses: shogo82148/actions-setup-perl@v1
+      #   with:
+      #     perl-version: "5.32"
+      #     distribution: strawberry
+      # - name: Make openssl-src Use Strawberry Perl
+      #   run: echo OPENSSL_SRC_PERL=C:/Strawberry/perl/bin/perl >> $GITHUB_ENV
+      # - name: Show Perl Version
+      #   run: |
+      #     export PATH
+      #     perl -v
+      #     C:/Strawberry/perl/bin/perl -v
       - uses: actions/checkout@v3
       - name: Setup Rust toolchain
         uses: dtolnay/rust-toolchain@stable
