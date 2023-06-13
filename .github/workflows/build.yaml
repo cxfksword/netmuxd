@@ -136,7 +136,7 @@ jobs:
         with:
           command: "build"
           target: ${{ matrix.platform.target }}
-          args: "--release --bin netmuxd"
+          args: "--bin netmuxd"
       # - name: Publish release artifacts
       #   uses: actions/upload-artifact@v3
       #   with:
