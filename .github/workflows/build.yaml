@@ -124,7 +124,6 @@ jobs:
         run: |
           export PATH
           which perl
-          where perl
           perl -v
       - name: Make openssl-src Use Strawberry Perl
         run: echo OPENSSL_SRC_PERL=$(which perl) >> $GITHUB_ENV
