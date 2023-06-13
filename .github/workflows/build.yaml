@@ -121,12 +121,13 @@ jobs:
       #   with:
       #     perl-version: "5.32"
       #     distribution: strawberry
-      # - name: Make openssl-src Use Strawberry Perl
-      #   run: echo OPENSSL_SRC_PERL=C:/Strawberry/perl/bin/perl >> $GITHUB_ENV
-      # - name: Show Perl Version
-      #   run: |
-      #     export PATH
-      #     perl -v
+      - name: Make openssl-src Use Strawberry Perl
+        run: echo OPENSSL_SRC_PERL=/usr/bin/perl >> $GITHUB_ENV
+      - name: Show Perl Version
+        run: |
+          export PATH
+          /usr/bin/perl -v
+
       #     C:/Strawberry/perl/bin/perl -v
       - uses: actions/checkout@v3
       - name: Setup Rust toolchain
