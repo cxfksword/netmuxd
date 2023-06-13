@@ -81,51 +81,19 @@ jobs:
   windows:
     name: ${{ matrix.platform.os_name }} with rust ${{ matrix.toolchain }}
     runs-on: ${{ matrix.platform.os }}
-    defaults:
-      run:
-        shell: msys2 {0}
     strategy:
       fail-fast: false
       matrix:
         platform:
           - os_name: Windows-x86_64
             os: windows-latest
-            target: x86_64-pc-windows-gnu
+            target: x86_64-pc-windows-msvc
             bin: netmuxd.exe
             name: netmuxd-Windows-x86_64.zip
     steps:
-      - uses: msys2/setup-msys2@v2
-        with:
-          msystem: MINGW64
-          release: false
-          update: false
-          install: >-
-            base-devel
-            git
-            mingw-w64-x86_64-gcc
-            make
-            libtool
-            autoconf
-            pkg-config
-            automake-wrapper
-            cython
-      - name: prepare environment
-        run: |
-          dest=`echo MINGW64 |tr [:upper:] [:lower:]`
-          echo "dest=$dest" >> $GITHUB_ENV
-          echo "target_triplet=`gcc -dumpmachine`" >> $GITHUB_ENV
-          git config --global core.autocrlf false
-      - name: Use strawberry perl for openssl
-        uses: shogo82148/actions-setup-perl@v1
-        with:
-          perl-version: "5.34"
-          # distribution: strawberry
-      - name: Show Perl Version
-        run: |
-          which perl
-          perl -v
-      - name: Make openssl-src Use Strawberry Perl
-        run: echo OPENSSL_SRC_PERL=$(which perl) >> $GITHUB_ENV
+      - run: |
+          vcpkg integrate install
+          vcpkg install openssl:x64-windows-static-md
 
       #     C:/Strawberry/perl/bin/perl -v
       - uses: actions/checkout@v3
