@@ -122,11 +122,10 @@ jobs:
       #     distribution: strawberry
       - name: Show Perl Version
         run: |
-          export PATH
-          which perl
+          where perl
           perl -v
-      - name: Make openssl-src Use Strawberry Perl
-        run: echo OPENSSL_SRC_PERL=$(which perl) >> $GITHUB_ENV
+      # - name: Make openssl-src Use Strawberry Perl
+      #   run: echo OPENSSL_SRC_PERL=$(where perl) >> $GITHUB_ENV
 
       #     C:/Strawberry/perl/bin/perl -v
       - uses: actions/checkout@v3
