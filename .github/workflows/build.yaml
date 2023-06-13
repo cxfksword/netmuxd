@@ -109,7 +109,6 @@ jobs:
       #       pkg-config
       #       automake-wrapper
       #       cython
-      - run: vcpkg install openssl:x64-windows-static-md
       # - name: prepare environment
       #   run: |
       #     dest=`echo MINGW64 |tr [:upper:] [:lower:]`
