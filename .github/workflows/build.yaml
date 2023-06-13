@@ -81,9 +81,9 @@ jobs:
   windows:
     name: ${{ matrix.platform.os_name }} with rust ${{ matrix.toolchain }}
     runs-on: ${{ matrix.platform.os }}
-    defaults:
-      run:
-        shell: msys2 {0}
+    # defaults:
+    #   run:
+    #     shell: msys2 {0}
     strategy:
       fail-fast: false
       matrix:
@@ -94,29 +94,28 @@ jobs:
             bin: netmuxd.exe
             name: netmuxd-Windows-x86_64.zip
     steps:
-      - uses: msys2/setup-msys2@v2
-        with:
-          msystem: MINGW64
-          release: false
-          update: false
-          install: >-
-            base-devel
-            git
-            mingw-w64-x86_64-gcc
-            make
-            libtool
-            autoconf
-            pkg-config
-            automake-wrapper
-            cython
-      - run: echo "VCPKG_ROOT=$env:VCPKG_INSTALLATION_ROOT" | Out-File -FilePath $env:GITHUB_ENV -Append
+      # - uses: msys2/setup-msys2@v2
+      #   with:
+      #     msystem: MINGW64
+      #     release: false
+      #     update: false
+      #     install: >-
+      #       base-devel
+      #       git
+      #       mingw-w64-x86_64-gcc
+      #       make
+      #       libtool
+      #       autoconf
+      #       pkg-config
+      #       automake-wrapper
+      #       cython
       - run: vcpkg install openssl:x64-windows-static-md
-      - name: prepare environment
-        run: |
-          dest=`echo MINGW64 |tr [:upper:] [:lower:]`
-          echo "dest=$dest" >> $GITHUB_ENV
-          echo "target_triplet=`gcc -dumpmachine`" >> $GITHUB_ENV
-          git config --global core.autocrlf false
+      # - name: prepare environment
+      #   run: |
+      #     dest=`echo MINGW64 |tr [:upper:] [:lower:]`
+      #     echo "dest=$dest" >> $GITHUB_ENV
+      #     echo "target_triplet=`gcc -dumpmachine`" >> $GITHUB_ENV
+      #     git config --global core.autocrlf false
       # - name: Use strawberry perl for openssl
       #   uses: shogo82148/actions-setup-perl@v1
       #   with:
