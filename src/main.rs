@@ -198,7 +198,7 @@ async fn handle_stream(
 
         loop {
             // Wait for a message from the client
-            let mut buf = [0; 1024];
+            let mut buf = [0; 10240];
             let size = match socket.read(&mut buf).await {
                 Ok(s) => s,
                 Err(_) => {
@@ -363,6 +363,61 @@ async fn handle_stream(
 
                             let res = RawPacket::new(p, 1, 8, parsed.tag);
                             let res: Vec<u8> = res.into();
+                            socket.write_all(&res).await.unwrap();
+
+                            // No more further communication for this packet
+                            return;
+                        }
+                        "SavePairRecord" => {
+                            let lock = data.lock().await;
+                            let p_recordid = parsed
+                                .plist
+                                .clone()
+                                .dict_get_item("PairRecordID")
+                                .unwrap()
+                                .get_string_val()
+                                .unwrap();
+                            let p_pair_record_data = parsed
+                                .plist
+                                .clone()
+                                .dict_get_item("PairRecordData")
+                                .unwrap()
+                                .get_data_val()
+                                .unwrap();
+
+                            // save pair record data to file
+                            let ok = match lock
+                                .set_pairing_record(p_recordid.clone(), p_pair_record_data)
+                            {
+                                Ok(ok) => ok,
+                                Err(_) => {
+                                    // Unimplemented
+                                    return;
+                                }
+                            };
+
+                            // notify paired
+                            if ok {
+                                println!("paired ok! {}", p_recordid);
+                                // let udid = p_recordid;
+                                // heartbeat::heartbeat(
+                                //     udid.clone(),
+                                //     ip_address.clone().parse().unwrap(),
+                                //     data.clone(),
+                                // );
+                                // lock.add_network_device(
+                                //     udid,
+                                //     ip_address.parse().unwrap(),
+                                //     None,
+                                //     "Network".to_string(),
+                                //     false,
+                                //     data.clone(),
+                                // );
+                            }
+
+                            let mut p = Plist::new_dict();
+                            p.dict_set_item("Result", "OK".into()).unwrap();
+                            let res: Vec<u8> = RawPacket::new(p, 1, 8, parsed.tag).into();
                             socket.write_all(&res).await.unwrap();
 
                             // No more further communication for this packet

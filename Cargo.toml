@@ -22,8 +22,8 @@ futures-util = { version = "0.3.21" }
 zeroconf = { git = "https://github.com/cxfksword/zeroconf-rs.git", branch = "master", optional = true }
 mdns = { git = "https://github.com/cxfksword/mdns.git", branch = "master" }
 
-rusty_libimobiledevice = { version = "0.1.2", git = "https://github.com/cxfksword/rusty_libimobiledevice.git", branch = "master", features = [ "static", "vendored" ] }
-plist_plus = { version = "0.2.*", git = "https://github.com/cxfksword/plist_plus.git", branch = "master", features = [ "static", "vendored" ] }
+rusty_libimobiledevice = { version = "0.1.2", features = [ "static", "vendored" ] }
+plist_plus = { version = "0.2.*", git = "https://github.com/cxfksword/plist_plus.git", branch = "fix_windows", features = [ "static", "vendored" ] }
 
 log = { version = "0.4.16" }
 env_logger = { version = "0.7.1" }
@@ -31,6 +31,7 @@ colored = { version = "2.0.0" }
 
 rusb = { version = "0.9.1", optional = true }
 libusb1-sys = { version = "0.6.2", optional = true }
+rand = "0.8.5"
 
 [features]
 usb = [ "libusb1-sys", "rusb" ]

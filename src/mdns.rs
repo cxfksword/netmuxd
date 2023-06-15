@@ -57,6 +57,11 @@ pub async fn discover(data: Arc<Mutex<SharedDevices>>) {
             let mac_addr = name.split("@").collect::<Vec<&str>>()[0];
             let mut lock = data.lock().await;
             let pairable = service.service_type().name() == SERVICE_NAME_PAIRABLE;
+            let current_service_name = if pairable {
+                service_name_pairable.clone()
+            } else {
+                service_name.clone()
+            };
             if let Ok(udid) = lock.get_udid_from_mac(mac_addr.to_string(), pairable) {
                 if lock.devices.contains_key(&udid) {
                     info!("Device has already been added to muxer, skipping");
@@ -67,7 +72,7 @@ pub async fn discover(data: Arc<Mutex<SharedDevices>>) {
                 lock.add_network_device(
                     udid,
                     addr,
-                    service_name.clone(),
+                    current_service_name,
                     "Network".to_string(),
                     pairable,
                     data.clone(),
@@ -123,6 +128,11 @@ pub async fn discover(data: Arc<Mutex<SharedDevices>>) {
             let mac_addr = mac_addr.unwrap();
             let mut lock = data.lock().await;
             let pairable = service_type.unwrap() == SERVICE_NAME_PAIRABLE;
+            let current_service_name = if pairable {
+                service_name_pairable.clone()
+            } else {
+                service_name.clone()
+            };
             if let Ok(udid) = lock.get_udid_from_mac(mac_addr.to_string(), pairable) {
                 if lock.devices.contains_key(&udid) {
                     info!("Device has already been added to muxer, skipping");
@@ -133,7 +143,7 @@ pub async fn discover(data: Arc<Mutex<SharedDevices>>) {
                 lock.add_network_device(
                     udid,
                     addr,
-                    service_name.clone(),
+                    current_service_name,
                     "Network".to_string(),
                     pairable,
                     data.clone(),

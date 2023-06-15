@@ -1,12 +1,17 @@
 // jkcoxson
 
-use std::{collections::HashMap, io::Read, net::IpAddr, path::PathBuf, sync::Arc};
+use std::{collections::HashMap, io::Read, net::IpAddr, os::raw::c_char, path::PathBuf, sync::Arc};
 
+use futures_util::future::ok;
 use log::{error, info, trace, warn};
 use plist_plus::{error::PlistError, Plist};
+use rand::Rng;
 use tokio::sync::{mpsc::UnboundedSender, Mutex};
 
 use crate::heartbeat;
+
+const SYSTEM_CONFIG_NAME: &str = "SystemConfiguration.plist";
+const PLIST_SYSTEM_BUID_KEY: &str = "SystemBUID";
 
 pub struct SharedDevices {
     pub devices: HashMap<String, MuxerDevice>,
@@ -56,7 +61,7 @@ impl SharedDevices {
             // Create the directory
             std::fs::create_dir(&plist_storage).expect("Unable to create plist storage folder");
             info!("Created plist storage!");
-            error!("You are missing a system configuration file. Run usbmuxd to create one.")
+            warn!("You are missing a system configuration file. ")
         } else {
             trace!("Plist storage exists");
         }
@@ -163,23 +168,67 @@ impl SharedDevices {
         file.read_to_end(&mut contents).unwrap();
         Ok(contents)
     }
-    pub fn get_buid(&self) -> Result<String, PlistError> {
-        let path = PathBuf::from(self.plist_storage.clone()).join("SystemConfiguration.plist");
-        if !path.exists() {
-            error!("No SystemConfiguration.plist found!");
+    pub fn set_pairing_record(&self, udid: String, data: Vec<c_char>) -> Result<bool, PlistError> {
+        let plist =
+            match Plist::from_bin(unsafe { std::mem::transmute::<Vec<c_char>, Vec<u8>>(data) }) {
+                Ok(plist) => plist,
+                Err(e) => {
+                    error!("Pairing record data error. {}", e);
+                    return Err(PlistError::Unknown);
+                }
+            };
+
+        let path = PathBuf::from(self.plist_storage.clone()).join(format!("{}.plist", udid));
+        if let Err(e) = std::fs::write(path, plist.to_string()) {
+            error!("Save pairing record plist file error. {}", e);
             return Err(PlistError::Unknown);
         }
-        // Read the file to a string
-        info!("Reading SystemConfiguration.plist");
-        let mut file = std::fs::File::open(path).unwrap();
-        let mut contents = String::new();
-        file.read_to_string(&mut contents).unwrap();
+        Ok(true)
+    }
+    pub fn get_buid(&self) -> Result<String, PlistError> {
+        let path = PathBuf::from(self.plist_storage.clone()).join(SYSTEM_CONFIG_NAME);
+        if !path.exists() {
+            info!("Creating SystemConfiguration.plist");
+            let buid = self.generate_system_buid();
+            let buid_str = Plist::new_string(buid.as_str());
+            let mut plist = Plist::new_dict();
+            plist.dict_set_item(PLIST_SYSTEM_BUID_KEY, buid_str)?;
+            if let Err(e) = std::fs::write(path, plist.to_string()) {
+                error!("{}", e);
+                return Err(PlistError::Unknown);
+            }
+            Ok(buid)
+        } else {
+            // Read the file to a string
+            info!("Reading SystemConfiguration.plist");
+            let mut file = std::fs::File::open(path).unwrap();
+            let mut contents = String::new();
+            file.read_to_string(&mut contents).unwrap();
 
-        // Parse the string into a plist
-        info!("Parsing SystemConfiguration.plist");
-        let plist = Plist::from_xml(contents).unwrap();
-        let buid = plist.dict_get_item("SystemBUID")?.get_string_val()?;
-        Ok(buid)
+            // Parse the string into a plist
+            info!("Parsing SystemConfiguration.plist");
+            let plist = Plist::from_xml(contents).unwrap();
+            let buid = plist.dict_get_item("SystemBUID")?.get_string_val()?;
+            Ok(buid)
+        }
+    }
+
+    pub fn generate_system_buid(&self) -> String {
+        const CHARSET: &[u8] = b"ABCDEF0123456789";
+        const BUID_LEN: usize = 36;
+        let mut rng = rand::thread_rng();
+
+        let buid: String = (0..BUID_LEN)
+            .map(|i| {
+                if i == 8 || i == 13 || i == 18 || i == 23 {
+                    return char::from('-');
+                }
+                let idx = rng.gen_range(0..CHARSET.len());
+                char::from(unsafe { *CHARSET.get_unchecked(idx) })
+            })
+            .collect();
+
+        return buid;
     }
 
     pub fn update_cache(&mut self) {

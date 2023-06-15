@@ -67,7 +67,11 @@ impl TryFrom<&[u8]> for RawPacket {
 
         // Determine if we have enough data to parse
         if packet.len() < packet_size as usize {
-            warn!("Not enough data to parse a raw packet body");
+            warn!(
+                "Not enough data to parse a raw packet body. expect: {} actual: {}",
+                packet.len(),
+                packet_size
+            );
             return Err(());
         }
 
