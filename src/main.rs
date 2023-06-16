@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 #[cfg(unix)]
-use std::{fs, os::unix::prelude::PermissionsExt};
+use std::{fs, os::raw::c_char, os::unix::prelude::PermissionsExt};
 
 use crate::raw_packet::RawPacket;
 use devices::SharedDevices;
@@ -369,7 +369,7 @@ async fn handle_stream(
                             return;
                         }
                         "SavePairRecord" => {
-                            let lock = data.lock().await;
+                            let mut lock = data.lock().await;
                             let p_recordid = parsed
                                 .plist
                                 .clone()
@@ -384,10 +384,32 @@ async fn handle_stream(
                                 .unwrap()
                                 .get_data_val()
                                 .unwrap();
+                            let mut pair_record_data = Plist::from_bin(unsafe {
+                                std::mem::transmute::<Vec<c_char>, Vec<u8>>(p_pair_record_data)
+                            })
+                            .unwrap();
+                            let mac_addr = pair_record_data
+                                .clone()
+                                .dict_get_item("WiFiMACAddress")
+                                .unwrap()
+                                .get_string_val()
+                                .unwrap();
+                            // Complete UDID
+                            if let Err(_) = pair_record_data
+                                .clone()
+                                .dict_get_item("UDID")
+                                .unwrap()
+                                .get_string_val()
+                            {
+                                warn!("Not found UDID key.");
+                                pair_record_data
+                                    .dict_set_item("UDID", p_recordid.clone().into())
+                                    .unwrap();
+                            }
 
                             // save pair record data to file
                             let ok = match lock
-                                .set_pairing_record(p_recordid.clone(), p_pair_record_data)
+                                .set_pairing_record(p_recordid.clone(), pair_record_data)
                             {
                                 Ok(ok) => ok,
                                 Err(_) => {
@@ -399,20 +421,24 @@ async fn handle_stream(
                             // notify paired
                             if ok {
                                 println!("paired ok! {}", p_recordid);
-                                // let udid = p_recordid;
-                                // heartbeat::heartbeat(
-                                //     udid.clone(),
-                                //     ip_address.clone().parse().unwrap(),
-                                //     data.clone(),
-                                // );
-                                // lock.add_network_device(
-                                //     udid,
-                                //     ip_address.parse().unwrap(),
-                                //     None,
-                                //     "Network".to_string(),
-                                //     false,
-                                //     data.clone(),
-                                // );
+                                let udid = p_recordid;
+                                let pairable_uuid = format!("ffff{}fff", mac_addr);
+                                if lock.devices.contains_key(&pairable_uuid) {
+                                    let pairable_dev =
+                                        lock.devices.get(&pairable_uuid).unwrap().clone();
+                                    let service_name = pairable_dev.service_name.clone().unwrap();
+                                    let addr = pairable_dev.network_address.unwrap();
+                                    // remove old paired
+                                    lock.remove_device(udid.clone());
+                                    lock.add_network_device(
+                                        udid,
+                                        addr,
+                                        service_name,
+                                        "Network".to_string(),
+                                        false,
+                                        data.clone(),
+                                    )
+                                }
                             }
 
                             let mut p = Plist::new_dict();

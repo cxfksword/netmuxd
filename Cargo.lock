@@ -878,6 +878,7 @@ dependencies = [
  "rusb",
  "rusty_libimobiledevice",
  "tokio",
+ "uuid",
  "zeroconf",
 ]
 
@@ -1392,6 +1393,15 @@ name = "unicode-xid"
 version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f962df74c8c05a667b5ee8bcf162993134c104e96440b663c8daa176dc772d8c"
+
+[[package]]
+name = "uuid"
+version = "1.3.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0fa2982af2eec27de306107c027578ff7f423d65f7250e40ce0fea8f45248b81"
+dependencies = [
+ "getrandom",
+]
 
 [[package]]
 name = "value-bag"
