@@ -6,10 +6,12 @@ use std::{fs, os::raw::c_char, os::unix::prelude::PermissionsExt};
 
 use crate::raw_packet::RawPacket;
 use devices::SharedDevices;
+use futures_util::{task::UnsafeFutureObj, FutureExt};
 use log::{error, info, warn};
 use plist_plus::Plist;
 use tokio::{
-    io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt},
+    io::{split, AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt},
+    net::TcpStream,
     sync::Mutex,
 };
 
@@ -128,7 +130,8 @@ async fn main() {
                     }
                 };
 
-                handle_stream(socket, data.clone()).await;
+                let (mut reader, mut writer) = split(socket);
+                handle_stream(reader, writer, data.clone()).await;
             }
         });
     }
@@ -157,7 +160,8 @@ async fn main() {
                     }
                 };
 
-                handle_stream(socket, data.clone()).await;
+                let (mut reader, mut writer) = split(socket);
+                handle_stream(reader, writer, data.clone()).await;
             }
         });
     }
@@ -189,17 +193,28 @@ enum Directions {
     Listen,
 }
 
-async fn handle_stream(
-    mut socket: impl AsyncRead + AsyncWrite + Unpin + Send + 'static,
+enum MessageResult {
+    Ok = 0,
+    BadCommand = 1,
+    BadDev = 2,
+    ConnRefused = 3,
+    BadVersion = 6,
+}
+
+async fn handle_stream<T>(
+    mut reader: tokio::io::ReadHalf<T>,
+    mut writer: tokio::io::WriteHalf<T>,
     data: Arc<Mutex<SharedDevices>>,
-) {
+) where
+    T: AsyncRead + AsyncWrite + Send + 'static,
+{
     tokio::spawn(async move {
         let mut current_directions = Directions::None;
 
         loop {
             // Wait for a message from the client
             let mut buf = [0; 10240];
-            let size = match socket.read(&mut buf).await {
+            let size = match reader.read(&mut buf).await {
                 Ok(s) => s,
                 Err(_) => {
                     return;
@@ -219,7 +234,7 @@ async fn handle_stream(
                 info!("Packet size: {}", packet_size);
                 // Pull the rest of the packet
                 let mut packet = vec![0; packet_size as usize];
-                let size = match socket.read(&mut packet).await {
+                let size = match reader.read(&mut packet).await {
                     Ok(s) => s,
                     Err(_) => {
                         return;
@@ -303,7 +318,7 @@ async fn handle_stream(
                             let mut p = Plist::new_dict();
                             p.dict_set_item("Result", "OK".into()).unwrap();
                             let res: Vec<u8> = RawPacket::new(p, 1, 8, parsed.tag).into();
-                            socket.write_all(&res).await.unwrap();
+                            writer.write_all(&res).await.unwrap();
 
                             // No more further communication for this packet
                             return;
@@ -332,14 +347,10 @@ async fn handle_stream(
                             upper.dict_set_item("DeviceList", device_list).unwrap();
                             let res = RawPacket::new(upper, 1, 8, parsed.tag);
                             let res: Vec<u8> = res.into();
-                            socket.write_all(&res).await.unwrap();
+                            writer.write_all(&res).await.unwrap();
 
                             // No more further communication for this packet
                             return;
-                        }
-                        "Listen" => {
-                            // The full functionality of this is not implemented. We will just maintain the connection.
-                            current_directions = Directions::Listen;
                         }
                         "ReadPairRecord" => {
                             let lock = data.lock().await;
@@ -363,7 +374,7 @@ async fn handle_stream(
 
                             let res = RawPacket::new(p, 1, 8, parsed.tag);
                             let res: Vec<u8> = res.into();
-                            socket.write_all(&res).await.unwrap();
+                            writer.write_all(&res).await.unwrap();
 
                             // No more further communication for this packet
                             return;
@@ -441,10 +452,7 @@ async fn handle_stream(
                                 }
                             }
 
-                            let mut p = Plist::new_dict();
-                            p.dict_set_item("Result", "OK".into()).unwrap();
-                            let res: Vec<u8> = RawPacket::new(p, 1, 8, parsed.tag).into();
-                            socket.write_all(&res).await.unwrap();
+                            send_result(&mut writer, parsed.tag, MessageResult::Ok).await;
 
                             // No more further communication for this packet
                             return;
@@ -458,13 +466,70 @@ async fn handle_stream(
 
                             let res = RawPacket::new(p, 1, 8, parsed.tag);
                             let res: Vec<u8> = res.into();
-                            socket.write_all(&res).await.unwrap();
+                            writer.write_all(&res).await.unwrap();
 
                             // No more further communication for this packet
                             return;
                         }
+                        "Listen" => {
+                            // 监听iOS设备插拔
+                            // The full functionality of this is not implemented. We will just maintain the connection.
+                            // current_directions = Directions::Listen;
+                        }
                         "Connect" => {
-                            current_directions = Directions::Connect;
+                            // 建立和iOS端应用程序的连接（netmuxd代理转发到ios端）
+                            // current_directions = Directions::Connect;
+                            let lock = data.lock().await;
+                            let device_id = parsed
+                                .plist
+                                .clone()
+                                .dict_get_item("DeviceID")
+                                .unwrap()
+                                .get_uint_val()
+                                .unwrap();
+                            let port = parsed
+                                .plist
+                                .clone()
+                                .dict_get_item("PortNumber")
+                                .unwrap()
+                                .get_uint_val()
+                                .unwrap();
+
+                            let addr = lock.get_addr_by_device_id(device_id);
+                            if !addr.is_none() {
+                                let addr = format!("{}:{}", addr.unwrap(), port);
+                                let server =
+                                    match tokio::net::TcpStream::connect(addr.clone()).await {
+                                        Ok(server) => server,
+                                        Err(e) => {
+                                            error!(
+                                                "Failed to connect to device:{:?} with error: {}",
+                                                addr, e
+                                            );
+                                            send_result(
+                                                &mut writer,
+                                                parsed.tag,
+                                                MessageResult::ConnRefused,
+                                            )
+                                            .await;
+                                            return;
+                                        }
+                                    };
+                                let (mut oread, mut owrite) = server.into_split();
+                                send_result(&mut writer, parsed.tag, MessageResult::Ok).await;
+
+                                tokio::spawn(async move {
+                                    loop {
+                                        let _ = tokio::io::copy(&mut reader, &mut owrite).await;
+                                        let _ = tokio::io::copy(&mut oread, &mut writer).await;
+                                    }
+                                });
+                            } else {
+                                send_result(&mut writer, parsed.tag, MessageResult::BadDev).await;
+                            }
+
+                            // No more further communication for this packet
+                            return;
                         }
                         _ => {
                             warn!("Unknown packet type");
@@ -478,4 +543,17 @@ async fn handle_stream(
             }
         }
     });
+}
+
+async fn send_result<T>(writer: &mut tokio::io::WriteHalf<T>, tag: u32, result: MessageResult)
+where
+    T: AsyncRead + AsyncWrite,
+{
+    let mut p = Plist::new_dict();
+    // p.dict_set_item("Result", "OK".into()).unwrap();
+    p.dict_set_item("MessageType", "Result".into()).unwrap();
+    p.dict_set_item("Number", Plist::new_uint(result as u64))
+        .unwrap();
+    let res: Vec<u8> = RawPacket::new(p, 1, 8, tag).into();
+    writer.write_all(&res).await.unwrap();
 }

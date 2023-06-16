@@ -207,6 +207,17 @@ impl SharedDevices {
         return Uuid::new_v4().to_string().to_uppercase();
     }
 
+    pub fn get_addr_by_device_id(&self, device_id: u64) -> Option<IpAddr> {
+        let addr = self.devices.iter().find_map(|(_, val)| {
+            if val.device_id == device_id {
+                val.network_address
+            } else {
+                None
+            }
+        });
+        return addr;
+    }
+
     pub fn update_cache(&mut self) {
         // Iterate through all files in the plist storage, loading them into memory
         trace!("Updating plist cache");
